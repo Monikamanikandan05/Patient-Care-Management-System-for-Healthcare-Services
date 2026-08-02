@@ -1,0 +1,247 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+/* General app styling - Dark Cardiac Theme */
+html, body, [data-testid="stAppViewContainer"], .stApp {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 50%, rgba(185, 28, 28, 0.15) 0%, rgba(11, 13, 16, 0.98) 75%),
+                radial-gradient(circle at 0% 0%, rgba(239, 68, 68, 0.08) 0%, transparent 40%),
+                #0b0d10 !important;
+    background-attachment: fixed !important;
+    color: #f1f5f9 !important;
+}
+
+/* Streamlit header transparency */
+[data-testid="stHeader"] {
+    background: transparent !important;
+}
+
+/* --- Professional Hospital Blue/White Sidebar Styling --- */
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e2e8f0 !important;
+    box-shadow: 4px 0 25px rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-testid="stSidebar"] p, 
+[data-testid="stSidebar"] div, 
+[data-testid="stSidebar"] button, 
+[data-testid="stSidebar"] input, 
+[data-testid="stSidebar"] select, 
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] span:not([class*="Material"]) {
+    color: #1e293b;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+[data-testid="stSidebarCollapseButton"] *,
+[data-testid="collapsedControl"] *,
+[data-testid="stSidebar"] button[data-testid="baseButton-header"] * {
+    font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-title {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #64748b !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding-left: 8px;
+    margin: 16px 0 6px 0;
+}
+
+/* Sidebar Dividers */
+.sidebar-divider {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 10px 0;
+}
+
+/* Input Fields inside Sidebar (Search Bar) */
+[data-testid="stSidebar"] div[data-testid="stTextInput"] input {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+}
+
+[data-testid="stSidebar"] div[data-testid="stTextInput"] input:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Active primary page navigation button styling */
+[data-testid="stSidebar"] button[kind="primary"] {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border: none !important;
+    border-left: 4px solid #2563eb !important;
+    font-weight: 700 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    padding: 10px 16px !important;
+    border-radius: 4px 10px 10px 4px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Normal secondary page navigation button styling */
+[data-testid="stSidebar"] button[kind="secondary"] {
+    background-color: transparent !important;
+    color: #475569 !important;
+    border: none !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    padding: 10px 16px !important;
+    font-weight: 500 !important;
+    border-radius: 10px !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+}
+
+[data-testid="stSidebar"] button[kind="secondary"]:hover {
+    background-color: #f1f5f9 !important;
+    color: #2563eb !important;
+    transform: translateX(3px) !important;
+}
+
+
+/* Streamlit Title & Headers */
+h1, h2, h3, h4, h5, h6 {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+}
+
+/* Card Container styling for reports/content - Glassmorphic Crimson */
+.medical-card {
+    background: rgba(22, 25, 30, 0.85);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 
+                inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    margin-bottom: 20px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.medical-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(239, 68, 68, 0.45);
+    box-shadow: 0 15px 35px rgba(239, 68, 68, 0.1), 
+                0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+div.stButton > button.secondary { opacity: 0.6; }
+
+div.stButton > button.primary {
+    background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%) !important;
+    color: #ffffff !important;
+    border: 2px solid #ef4444;
+    border-radius: 10px !important;
+    padding: 10px 24px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.8), 0 4px 12px rgba(220, 38, 38, 0.4) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    width: 100% !important;
+}
+
+div.stButton > button:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    box-shadow: 0 10px 20px rgba(220, 38, 38, 0.4), 
+                0 0 15px rgba(239, 68, 68, 0.2) !important;
+    transform: translateY(-1px) !important;
+    border: none !important;
+}
+
+div.stButton > button:active {
+    transform: translateY(1px) !important;
+}
+
+/* Form input styling */
+div[data-testid="stTextInput"] input, 
+div[data-testid="stSelectbox"] select,
+div[data-testid="stTextArea"] textarea {
+    border-radius: 10px !important;
+    border: 1px solid #2e353f !important;
+    padding: 10px 14px !important;
+    background-color: #16191e !important;
+    color: #ffffff !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="stTextInput"] input:focus, 
+div[data-testid="stSelectbox"] select:focus,
+div[data-testid="stTextArea"] textarea:focus {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+    background-color: #1a1e24 !important;
+}
+
+/* Metric container styling */
+div[data-testid="stMetricValue"] {
+    color: #ef4444 !important;
+    font-weight: 800 !important;
+}
+
+div[data-testid="stMetricLabel"] {
+    color: #9ca3af !important;
+    font-size: 0.875rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Success/Error/Info alert styling */
+div[data-testid="stNotification"] {
+    border-radius: 12px !important;
+    background-color: rgba(22, 25, 30, 0.9) !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+    color: #ffffff !important;
+}
+
+/* Heartbeat animation for heart rate metric */
+.heartbeat {
+    display: inline-block;
+    animation: pulse 1.2s ease-in-out infinite;
+    color: #ef4444;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Role button selected highlight */
+[data-testid="stButton"] > button.primary {
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.7);
+    border: 2px solid #ef4444;
+}
+
+[data-testid="stButton"] > button.secondary {
+    opacity: 0.7;
+}
+
+.hospital-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid rgba(239, 68, 68, 0.25);
+}
+
+.hospital-badge {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}

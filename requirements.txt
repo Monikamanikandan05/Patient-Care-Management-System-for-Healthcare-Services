@@ -1,0 +1,9 @@
+streamlit
+mysql-connector-python
+SQLAlchemy
+python-dotenv
+cryptography
+langchain
+langchain-community
+langchain-groq
+chromadb
