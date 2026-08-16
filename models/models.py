@@ -196,6 +196,26 @@ class PharmacyOrderItem(Base):
     medicine_id = Column(Integer, ForeignKey('pharmacy_medicines.id'), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Numeric(10, 2), nullable=False)
-
     order = relationship('PharmacyOrder', back_populates='items')
     medicine = relationship('PharmacyMedicine', back_populates='order_items')
+
+
+class OCRDocument(Base):
+    __tablename__ = 'ocr_documents'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    patient_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    uploaded_by_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    file_path = Column(String(255), nullable=False)
+    file_type = Column(String(50))
+    status = Column(String(50), default='Pending') # Pending, Processing, NeedsReview, Approved, Rejected, Error
+    document_type = Column(String(50)) # prescription, lab_report, etc
+    extracted_data = Column(Text) # JSON string of the structured output
+    overall_confidence = Column(Numeric(5, 4))
+    error_message = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    patient = relationship("User", foreign_keys=[patient_id])
+    uploaded_by = relationship("User", foreign_keys=[uploaded_by_id])
+

@@ -34,15 +34,21 @@ def book_appointment(db: Session, patient_id: int, doctor_id: int, date: datetim
     return appointment
 
 def get_appointments_for_user(db: Session, user_id: int, role: str):
+    from sqlalchemy.orm import joinedload
+    query = db.query(Appointment).options(
+        joinedload(Appointment.doctor).joinedload(Doctor.user),
+        joinedload(Appointment.doctor).joinedload(Doctor.specialty),
+        joinedload(Appointment.patient)
+    )
     if role == "Admin":
-        return db.query(Appointment).order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
+        return query.order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
     elif role == "Doctor":
         doc = db.query(Doctor).filter(Doctor.user_id == user_id).first()
         if not doc:
             return []
-        return db.query(Appointment).filter(Appointment.doctor_id == doc.id).order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
+        return query.filter(Appointment.doctor_id == doc.id).order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
     else:
-        return db.query(Appointment).filter(Appointment.patient_id == user_id).order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
+        return query.filter(Appointment.patient_id == user_id).order_by(Appointment.scheduled_date.desc(), Appointment.start_time.desc()).all()
 
 def cancel_appointment(db: Session, appointment_id: int):
     appt = db.query(Appointment).filter(Appointment.id == appointment_id).first()

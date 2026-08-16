@@ -9,6 +9,7 @@ from services.doctor_service import (
     create_specialty, add_doctor_slot, remove_doctor_slot
 )
 from services.auth_service import register_user
+from services.email_service import send_doctor_credentials_email
 from services.pharmacy_service import (
     get_all_medicines, add_medicine, update_stock, deactivate_medicine,
     reactivate_medicine, get_all_orders, update_order_status, seed_medicines,
@@ -39,15 +40,21 @@ def render_admin_portal():
         )
 
         # ── KPI Strip ─────────────────────────────────────────────────────────
-        k1, k2, k3, k4 = st.columns(4)
-        with k1:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
             st.metric("👥 Total Users",         stats["total_users"])
-        with k2:
+        with col2:
             st.metric("👨‍⚕️ Active Doctors",      stats["total_doctors"])
-        with k3:
+        with col3:
             st.metric("🧑‍⚕️ Registered Patients", stats["total_patients"])
-        with k4:
+        with col4:
             st.metric("📅 Total Appointments",  stats["total_appointments"])
+
+        st.markdown("---")
+
+        # ── Interactive Appointment Calendar ─────────────────────────────
+        from views.calendar_component import render_appointment_calendar
+        render_appointment_calendar(db, "Admin")
 
         st.markdown("---")
 
@@ -105,7 +112,7 @@ def render_admin_portal():
         # ── TAB 2: Manage Doctors ─────────────────────────────────────────────
         with tab2:
             st.markdown("### 👨‍⚕️ Manage Doctors")
-            doc_tab1, doc_tab2, doc_tab3 = st.tabs(["➕ Create Doctor", "🔄 Assign Profile", "⏰ Manage Availability"])
+            doc_tab1, doc_tab2, doc_tab3, doc_tab4 = st.tabs(["➕ Create Doctor", "🔄 Assign Profile", "⏰ Manage Availability", "🗑️ Delete Doctor"])
 
             # ── Sub-Tab 1: Create Doctor
             with doc_tab1:
@@ -133,7 +140,17 @@ def render_admin_portal():
                             try:
                                 user = register_user(db, new_name, new_email, new_pass, "Doctor", new_gender, new_phone)
                                 add_doctor_profile(db, user.id, spec_options[new_spec], new_bio, int(new_exp), float(new_fee))
-                                st.success(f"✅ Successfully created Doctor {new_name}!")
+                                
+                                # Send email with credentials
+                                email_status = send_doctor_credentials_email(new_name, new_email, new_pass)
+                                
+                                if email_status == "sent":
+                                    st.success(f"✅ Successfully created Doctor {new_name} and sent credentials to {new_email}!")
+                                elif email_status == "mocked":
+                                    st.warning(f"⚠️ Successfully created Doctor {new_name}, but email was not sent (SMTP is not configured in .env). Check console for mock email.")
+                                else:
+                                    st.error(f"❌ Successfully created Doctor {new_name}, but failed to send credentials email.")
+                                    
                             except ValueError as e:
                                 st.error(str(e))
                         else:
@@ -206,6 +223,95 @@ def render_admin_portal():
                                     st.rerun()
                     else:
                         st.info("No slots assigned.")
+
+            # ── Sub-Tab 4: Delete Doctor ──────────────────────────────────────
+            with doc_tab4:
+                st.markdown("#### 🗑️ Delete Doctor")
+                st.markdown(
+                    "<p style='color:#ef4444;font-size:0.9rem;'>"
+                    "⚠️ Deleting a doctor will permanently remove their account, profile, "
+                    "availability slots, and all associated data. This action <b>cannot be undone</b>."
+                    "</p>",
+                    unsafe_allow_html=True,
+                )
+
+                all_doc_users = db.query(User).filter(User.role == "Doctor").all()
+                if not all_doc_users:
+                    st.info("No doctors found.")
+                else:
+                    for doc_user in all_doc_users:
+                        doc_profile = db.query(Doctor).filter(Doctor.user_id == doc_user.id).first()
+                        spec_name = "N/A"
+                        if doc_profile and doc_profile.specialty_id:
+                            spec = db.query(Specialty).filter(Specialty.id == doc_profile.specialty_id).first()
+                            spec_name = spec.name if spec else "N/A"
+
+                        appt_count = db.query(Appointment).filter(
+                            Appointment.doctor_id == doc_profile.id
+                        ).count() if doc_profile else 0
+
+                        st.markdown(
+                            f"""<div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.25);
+                                border-left:4px solid #ef4444;border-radius:10px;padding:14px 18px;margin-bottom:4px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <div>
+                                        <span style="font-weight:700;color:#fff;font-size:1rem;">👨‍⚕️ Dr. {doc_user.full_name}</span>
+                                        <span style="color:#9ca3af;font-size:0.82rem;margin-left:12px;">{doc_user.email}</span>
+                                    </div>
+                                    <div style="display:flex;gap:10px;">
+                                        <span style="background:#a855f722;color:#a855f7;padding:2px 12px;border-radius:20px;font-size:.78rem;font-weight:700;">{spec_name}</span>
+                                        <span style="background:#3b82f622;color:#3b82f6;padding:2px 12px;border-radius:20px;font-size:.78rem;">{appt_count} appts</span>
+                                    </div>
+                                </div>
+                            </div>""",
+                            unsafe_allow_html=True,
+                        )
+
+                        col_chk, col_btn = st.columns([4, 1])
+                        with col_chk:
+                            confirmed = st.checkbox(
+                                f"I confirm I want to permanently delete Dr. {doc_user.full_name}",
+                                key=f"confirm_del_{doc_user.id}"
+                            )
+                        with col_btn:
+                            st.write("")
+                            if st.button("🗑️ Delete", key=f"del_doc_{doc_user.id}", use_container_width=True, type="primary"):
+                                if confirmed:
+                                    try:
+                                        if doc_profile:
+                                            # Step 1: Nullify doctor_id on appointments (keep history, remove link)
+                                            db.query(Appointment).filter(
+                                                Appointment.doctor_id == doc_profile.id
+                                            ).update({"doctor_id": None}, synchronize_session=False)
+
+                                            # Step 2: Nullify doctor_id on health records (keep records, remove link)
+                                            db.query(HealthRecord).filter(
+                                                HealthRecord.doctor_id == doc_profile.id
+                                            ).update({"doctor_id": None}, synchronize_session=False)
+
+                                            # Step 3: Delete availability slots
+                                            db.query(DoctorSlot).filter(
+                                                DoctorSlot.doctor_id == doc_profile.id
+                                            ).delete(synchronize_session=False)
+
+                                            db.flush()
+
+                                            # Step 4: Delete Doctor profile
+                                            db.delete(doc_profile)
+                                            db.flush()
+
+                                        # Step 5: Delete User account
+                                        db.delete(doc_user)
+                                        db.commit()
+                                        st.success(f"✅ Dr. {doc_user.full_name} has been permanently deleted.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        db.rollback()
+                                        st.error(f"❌ Failed to delete: {str(e)}")
+                                else:
+                                    st.warning("⚠️ Please tick the confirmation checkbox first.")
+
+                        st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
         # ── TAB 3: Medical Specialties ────────────────────────────────────────
         with tab3:
@@ -338,6 +444,14 @@ def render_admin_portal():
                         </div>""",
                         unsafe_allow_html=True
                     )
+                    if st.button("🗑️ Delete Record", key=f"del_admin_vital_{rec.id}", use_container_width=False):
+                        try:
+                            db.query(HealthRecord).filter(HealthRecord.id == rec.id).delete()
+                            db.commit()
+                            st.success("Record deleted successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to delete record: {e}")
             else:
                 st.info("No health records found in the system.")
 
@@ -468,20 +582,36 @@ def render_admin_pharmacy_view():
                     "🔍 Search medicines", placeholder="Type to filter by name, generic name or category…",
                     key="admin_inv_search"
                 )
-                if inv_search.strip():
+                search_term = inv_search.strip()
+                if search_term:
+                    suggestions = [
+                        m for m in medicines
+                        if search_term.lower() in m.name.lower()
+                        or search_term.lower() in (m.generic_name or "").lower()
+                        or search_term.lower() in (m.category or "").lower()
+                    ]
+                    if suggestions:
+                        st.markdown("<div style='font-size:0.8rem;color:#a855f7;font-weight:700;margin:4px 0 2px 0;'>📋 Matching medicines — click to select:</div>", unsafe_allow_html=True)
+                        sug_cols = st.columns(min(len(suggestions), 4))
+                        for idx, s in enumerate(suggestions[:8]):
+                            with sug_cols[idx % min(len(suggestions), 4)]:
+                                if st.button(f"💊 {s.name}", key=f"admin_inv_sug_{s.id}_{idx}", use_container_width=True):
+                                    st.session_state["admin_inv_search"] = s.name
+                                    st.rerun()
+
                     medicines = [
                         m for m in medicines
-                        if inv_search.lower() in m.name.lower()
-                        or inv_search.lower() in (m.generic_name or "").lower()
-                        or inv_search.lower() in (m.category or "").lower()
+                        if search_term.lower() in m.name.lower()
+                        or search_term.lower() in (m.generic_name or "").lower()
+                        or search_term.lower() in (m.category or "").lower()
                     ]
                     if not medicines:
-                        st.info(f"No medicines found for '{inv_search}'.")
+                        st.info(f"No medicines found for '{search_term}'.")
                     else:
                         st.markdown(
                             f"<p style='color:#9ca3af;font-size:.88rem;'>"
                             f"<span style='color:#a855f7;font-weight:700;'>{len(medicines)}</span>"
-                            f" result(s) for <b style='color:#fff;'>'{inv_search}'</b></p>",
+                            f" result(s) for <b style='color:#fff;'>'{search_term}'</b></p>",
                             unsafe_allow_html=True
                         )
 

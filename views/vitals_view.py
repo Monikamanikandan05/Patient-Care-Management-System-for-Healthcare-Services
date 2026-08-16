@@ -175,5 +175,13 @@ def render_vitals_view():
                 </p>
             </div>
             """)
+            if st.button("🗑️ Delete Record", key=f"del_vital_{r.id}", use_container_width=False):
+                try:
+                    db.query(HealthRecord).filter(HealthRecord.id == r.id).delete()
+                    db.commit()
+                    st.success("Record deleted successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to delete record: {e}")
     finally:
         db.close()

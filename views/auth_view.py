@@ -1,7 +1,15 @@
 import streamlit as st
+import datetime
 from core.database import SessionLocal
 from services.auth_service import login_user, register_user
 from views.components import render_centered_header, load_login_bg_css
+
+def _calculate_age(dob):
+    """Return age in years from a date object, or None if dob is None."""
+    if dob is None:
+        return None
+    today = datetime.date.today()
+    return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 ROLES = ["Patient", "Doctor", "Admin"]
 
@@ -89,6 +97,8 @@ PLACEHOLDERS = {
 def render_login_view():
     load_login_bg_css()
     render_centered_header("LOGIN PORTAL")
+    
+    st.markdown("<h3 style='text-align: center; color: #a5b4fc; font-weight: 600; margin-bottom: 25px;'>Welcome to Smart Care PCMS-HS! 👋</h3>", unsafe_allow_html=True)
 
     st.markdown("#### Sign in as")
     selected_role = _role_selector("login_role")
@@ -113,6 +123,7 @@ def render_login_view():
                         )
                     else:
                         st.session_state.logged_in = True
+                        age = _calculate_age(user.dob) if user.role != "Admin" else None
                         st.session_state.user = {
                             "id":        user.id,
                             "full_name": user.full_name,
@@ -120,6 +131,8 @@ def render_login_view():
                             "role":      user.role,
                             "gender":    user.gender,
                             "phone":     user.phone,
+                            "dob":       user.dob,
+                            "age":       age,
                         }
                         st.success(f"✅ Welcome back, {user.full_name}! Redirecting…")
                         st.rerun()
@@ -134,12 +147,12 @@ def render_login_view():
 # ── REGISTER ──────────────────────────────────────────────────────────────────
 def render_register_view():
     load_login_bg_css()
-    render_centered_header("REGISTRATION PORTAL")
+    render_centered_header("PATIENT REGISTRATION")
+    
+    st.markdown("<div style='text-align:center; color:#a5b4fc; margin-bottom: 25px;'>Register as a new patient to access our healthcare services.</div>", unsafe_allow_html=True)
 
-    st.markdown("#### Register as")
-    selected_role = _role_selector("register_role")
-
-    st.markdown("---")
+    # Only Patients can register. Doctors/Admins must be created by Admin.
+    selected_role = "Patient"
 
     name     = st.text_input("Full Name",      placeholder=PLACEHOLDERS[selected_role]["name"],       key="reg_name")
     email    = st.text_input("Email Address",  placeholder=PLACEHOLDERS[selected_role]["email"],      key="reg_email")
@@ -147,6 +160,22 @@ def render_register_view():
                               placeholder=PLACEHOLDERS[selected_role]["password"],                    key="reg_password")
     gender   = st.selectbox("Gender",          ["Male", "Female", "Other"],                           key="reg_gender")
     phone    = st.text_input("Phone Number",   placeholder=PLACEHOLDERS[selected_role]["phone"],      key="reg_phone")
+
+    # DOB — only for Patient and Doctor
+    dob = None
+    if selected_role != "Admin":
+        max_dob = datetime.date.today() - datetime.timedelta(days=365)  # at least 1 year old
+        dob = st.date_input(
+            "Date of Birth",
+            value=None,
+            min_value=datetime.date(1900, 1, 1),
+            max_value=max_dob,
+            key="reg_dob",
+            help="Required for Patient and Doctor accounts."
+        )
+        if dob:
+            age_preview = _calculate_age(dob)
+            st.caption(f"🎂 Age: **{age_preview} years**")
 
     if st.button("📋 Create Account", key="reg_btn", use_container_width=True):
         if not name.strip():
@@ -157,10 +186,12 @@ def render_register_view():
             st.error("Password is required.")
         elif len(password) < 6:
             st.warning("Password must be at least 6 characters long.")
+        elif selected_role != "Admin" and dob is None:
+            st.error("Date of Birth is required for Patient and Doctor accounts.")
         else:
             db = SessionLocal()
             try:
-                register_user(db, name, email, password, selected_role, gender, phone)
+                register_user(db, name, email, password, selected_role, gender, phone, dob)
                 st.success(
                     f"✅ Account created as **{selected_role}**! "
                     "Please go to Sign In to log in."

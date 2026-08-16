@@ -21,6 +21,7 @@ from views.pharmacy_view import render_pharmacy_view, render_doctor_pharmacy_vie
 from views.patient_prescriptions_view import render_patient_prescriptions_view
 from views.patient_reports_view import render_patient_reports_view
 
+
 import logging
 from core.database import create_tables
 
@@ -36,7 +37,7 @@ _audit_log.setLevel(logging.INFO)
 _audit_log.propagate = False
 
 st.set_page_config(
-    page_title="IPCMS",
+    page_title="PCMS - Healthcare Services",
     page_icon="🏥",
     layout="wide"
 )
@@ -62,7 +63,7 @@ if st.session_state.logged_in:
         """<div style='text-align: center; margin-bottom: 12px; padding-top: 10px;'>
             <div style='font-size: 2.8rem; line-height: 1;'>🏥</div>
             <div style='font-size: 1.15rem; font-weight: 800; color: #1e3a8a; margin-top: 6px; letter-spacing: -0.01em;'>IPCMS</div>
-            <div style='font-size: 0.65rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 2px;'>Integrated Patient Care Management System</div>
+            <div style='font-size: 0.65rem; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 2px;'>Patient Care Management System For Healthcare Services</div>
         </div>""",
         unsafe_allow_html=True
     )
@@ -84,7 +85,7 @@ if st.session_state.logged_in:
             {"label": "🧪 Lab Reports",         "page": "Lab Reports",    "section": "Clinical"},
             {"label": "💊 Prescriptions",       "page": "Prescriptions",  "section": "Clinical"},
             {"label": "🛒 Pharmacy",           "page": "Pharmacy",       "section": "Clinical"},
-            {"label": "🤖 AI Health Assistant", "page": "AI Assistant",   "section": "Tools"},
+            {"label": "🤖 Doctor's AI Assistant", "page": "AI Assistant",   "section": "Tools"},
             {"label": "🔔 Notifications",       "page": "Notifications",  "section": "Tools"},
             {"label": "⚙️ Settings",            "page": "Settings",       "section": "Tools"},
             {"label": "🚪 Logout",              "page": "Logout",         "section": "Tools"},
@@ -102,7 +103,7 @@ if st.session_state.logged_in:
             {"label": "💳 Billing",               "page": "Billing",        "section": "Administration"},
             {"label": "🏪 Pharmacy",              "page": "Pharmacy",       "section": "Administration"},
             {"label": "📊 Reports & Analytics",   "page": "Analytics",      "section": "Administration"},
-            {"label": "🤖 AI Health Assistant",   "page": "AI Assistant",   "section": "Services"},
+            {"label": "🤖 Admin's AI Assistant",   "page": "AI Assistant",   "section": "Services"},
             {"label": "🔔 Notifications",         "page": "Notifications",  "section": "Services"},
             {"label": "⚙️ Settings",              "page": "Settings",       "section": "Services"},
             {"label": "🚪 Logout",               "page": "Logout",         "section": "Services"},
@@ -246,8 +247,8 @@ else:
     st.sidebar.markdown(
         """<div style='text-align: center; margin-top: 40px; padding: 20px; background-color: rgba(15, 23, 42, 0.55); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(8px);'>
             <span style='font-size: 2.2rem;'>🏥</span>
-            <div style='font-weight: 800; color: #60a5fa; margin-top: 6px; font-size: 0.95rem;'>Smart Care IPCMS</div>
-            <div style='font-size: 0.7rem; color: #94a3b8; margin-top: 2px;'>Integrated Clinic Hub</div>
+            <div style='font-weight: 800; color: #60a5fa; margin-top: 6px; font-size: 0.95rem;'>Smart Care PCMS-HS</div>
+            <div style='font-size: 0.7rem; color: #94a3b8; margin-top: 2px;'>Healthcare Services</div>
         </div>""",
         unsafe_allow_html=True
     )

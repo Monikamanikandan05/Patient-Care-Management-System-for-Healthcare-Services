@@ -114,31 +114,21 @@ def render_pharmacy_view():
         # TAB 1: Browse
         # ─────────────────────────────────────────────────────────────────────
         with tab_store:
-            col_search, col_cat = st.columns([2, 1])
+            all_medicines = get_all_medicines(db)
+            all_med_names = [m.name for m in all_medicines]
+
+            col_search, col_quick, col_cat = st.columns([2, 2, 1])
             with col_search:
-                search_raw = st.text_input("🔍 Search medicines", placeholder="e.g. Paracetamol, Antibiotic, Insulin…", key="pharma_search")
+                search_raw = st.text_input("🔍 Search Keyword", placeholder="e.g. Paracetamol, Antibiotic…", key="pharma_search")
+            with col_quick:
+                sel_med = st.selectbox("💊 Instant Type & Search List", options=["— Select or type medicine name —"] + all_med_names, index=0, key="pharma_dropdown")
             with col_cat:
                 cats = ["All Categories"] + get_categories(db)
                 sel_cat = st.selectbox("Category", cats, key="pharma_cat")
 
-            all_medicines = get_all_medicines(db)
-
-            # ── Live autocomplete suggestions ──────────────────────────────
             search = search_raw.strip()
-            if search and len(search) >= 1:
-                suggestions = [
-                    m for m in all_medicines
-                    if search.lower() in m.name.lower()
-                    or search.lower() in (m.generic_name or "").lower()
-                ]
-                if suggestions:
-                    st.markdown("<div style='font-size:0.8rem;color:#10b981;font-weight:700;margin:4px 0 2px 0;'>📋 Matching medicines — click to select:</div>", unsafe_allow_html=True)
-                    sug_cols = st.columns(min(len(suggestions), 4))
-                    for idx, s in enumerate(suggestions[:8]):
-                        with sug_cols[idx % min(len(suggestions), 4)]:
-                            if st.button(f"💊 {s.name}", key=f"pharma_sug_btn_{s.id}_{idx}", use_container_width=True):
-                                st.session_state["pharma_search"] = s.name
-                                st.rerun()
+            if sel_med != "— Select or type medicine name —":
+                search = sel_med
 
             medicines = all_medicines
             if search:
@@ -497,31 +487,21 @@ def render_doctor_pharmacy_view():
         ])
 
         with tab_inventory:
-            col_search, col_cat = st.columns([2, 1])
+            all_medicines = get_all_medicines(db, include_inactive=False)
+            all_med_names = [m.name for m in all_medicines]
+
+            col_search, col_quick, col_cat = st.columns([2, 2, 1])
             with col_search:
-                search_raw = st.text_input("🔍 Search medicines", placeholder="e.g. Paracetamol, Antibiotic, Metformin…", key="doc_pharma_search")
+                search_raw = st.text_input("🔍 Search Keyword", placeholder="e.g. Paracetamol, Antibiotic…", key="doc_pharma_search")
+            with col_quick:
+                sel_med = st.selectbox("💊 Instant Type & Search List", options=["— Select or type medicine name —"] + all_med_names, index=0, key="doc_pharma_dropdown")
             with col_cat:
                 cats = ["All Categories"] + get_categories(db)
                 sel_cat = st.selectbox("Category", cats, key="doc_pharma_cat")
 
-            all_medicines = get_all_medicines(db, include_inactive=False)
-
-            # ── Live autocomplete suggestions ──────────────────────────────
             search = search_raw.strip()
-            if search and len(search) >= 1:
-                suggestions = [
-                    m for m in all_medicines
-                    if search.lower() in m.name.lower()
-                    or search.lower() in (m.generic_name or "").lower()
-                ]
-                if suggestions:
-                    st.markdown("<div style='font-size:0.8rem;color:#3b82f6;font-weight:700;margin:4px 0 2px 0;'>📋 Matching medicines — click to select:</div>", unsafe_allow_html=True)
-                    sug_cols = st.columns(min(len(suggestions), 4))
-                    for idx, s in enumerate(suggestions[:8]):
-                        with sug_cols[idx % min(len(suggestions), 4)]:
-                            if st.button(f"💊 {s.name}", key=f"doc_pharma_sug_btn_{s.id}_{idx}", use_container_width=True):
-                                st.session_state["doc_pharma_search"] = s.name
-                                st.rerun()
+            if sel_med != "— Select or type medicine name —":
+                search = sel_med
 
             medicines = all_medicines
             if search:

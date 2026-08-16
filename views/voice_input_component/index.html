@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: transparent !important;
+    overflow: hidden;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+
+  #voiceOrb {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  #voiceOrb:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: #f8fafc;
+  }
+  #voiceOrb.listening {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.7) !important;
+    animation: pulse 1.2s infinite alternate;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.95); }
+    100% { transform: scale(1.05); }
+  }
+</style>
+</head>
+<body>
+
+<button id="voiceOrb" title="Click to speak">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zM7 11a1 1 0 0 1 1 1 4 4 0 0 0 8 0 1 1 0 1 1 2 0 6 6 0 0 1-5 5.91V20h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.09A6 6 0 0 1 6 12a1 1 0 0 1 1-1z"/>
+  </svg>
+</button>
+
+<script>
+function stReady() {
+  window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+}
+function stHeight(h) {
+  window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h }, "*");
+}
+
+var currentLang = "en-US";
+var orb = document.getElementById("voiceOrb");
+var isListening = false;
+var accumulatedText = "";
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var rec = null;
+
+orb.addEventListener("click", function(e) {
+  e.preventDefault();
+  if (isListening) {
+    if (rec) {
+      try { rec.stop(); } catch(err) {}
+    }
+  } else {
+    startListening();
+  }
+});
+
+function startListening() {
+  if (!SR) {
+    alert("Speech recognition is not supported in this browser. Please use Chrome or Edge.");
+    return;
+  }
+  accumulatedText = "";
+  try {
+    if (rec) {
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
+      try { rec.abort(); } catch(e) {}
+    }
+    rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    rec.lang = currentLang;
+
+    rec.onstart = function() {
+      setListening();
+    };
+
+    rec.onresult = function(e) {
+      var fin = "", interim = "";
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          fin += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      var t = (fin || interim).trim();
+      if (t) {
+        accumulatedText = t;
+      }
+    };
+
+    rec.onerror = function(err) {
+      setIdle();
+    };
+
+    rec.onend = function() {
+      if (accumulatedText) {
+        try {
+          window.parent.postMessage({ type: "SMARTCARE_SPEECH_TEXT", text: accumulatedText }, "*");
+        } catch(e) {}
+      }
+      setIdle();
+    };
+
+    rec.start();
+    setListening();
+  } catch(err) {
+    setIdle();
+  }
+}
+
+function setListening() {
+  isListening = true;
+  orb.className = "listening";
+  orb.innerHTML = "&#9632;";
+  orb.title = "Listening... Click to stop";
+}
+
+function setIdle() {
+  isListening = false;
+  orb.className = "";
+  orb.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm0 2a2 2 0 0 0-2 2v6a2 2 0 0 0 4 0V5a2 2 0 0 0-2-2zM7 11a1 1 0 0 1 1 1 4 4 0 0 0 8 0 1 1 0 1 1 2 0 6 6 0 0 1-5 5.91V20h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.09A6 6 0 0 1 6 12a1 1 0 0 1 1-1z"/></svg>';
+  orb.title = "Click to speak";
+}
+
+window.addEventListener("message", function(e) {
+  if (e.data && e.data.type === "streamlit:render") {
+    stHeight(34);
+    var args = e.data.args || {};
+    if (args.ai_lang && args.ai_lang !== currentLang) {
+      currentLang = args.ai_lang;
+    }
+  }
+});
+
+stHeight(34);
+stReady();
+</script>
+</body>
+</html>

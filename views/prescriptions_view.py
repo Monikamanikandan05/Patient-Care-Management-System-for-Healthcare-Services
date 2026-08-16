@@ -266,31 +266,25 @@ def render_prescriptions_view():
                     with st.expander(f"💊 Tablet #{idx + 1} Details", expanded=True):
                         rx_col1, rx_col2 = st.columns(2)
                         with rx_col1:
-                            # ── Smart medicine search/autocomplete ──────────────────────
-                            med_search_key = f"pv_med_search_{idx}"
-                            med_typed = st.text_input(
-                                f"💊 Medication / Tablet Name #{idx+1}",
-                                placeholder="Type tablet name… e.g. Amoxicillin, Paracetamol, Metformin",
-                                key=med_search_key
+                            options_list = med_names + ["➕ Other (Specify Custom Name)"]
+                            selected_tablet = st.selectbox(
+                                 f"💊 Medication / Tablet Name #{idx+1}",
+                                 options=options_list,
+                                 index=None,
+                                 placeholder="Type to search tablets… e.g. Amoxicillin, Paracetamol",
+                                 key=f"pv_rx_select_{idx}"
                             )
-                            medication = med_typed.strip()
 
-                            # Show live matching suggestions from pharmacy
-                            if med_typed.strip():
-                                query = med_typed.strip().lower()
-                                matched = [n for n in med_names if query in n.lower()]
-                                if matched:
-                                    st.markdown(
-                                        "<div style='font-size:.8rem;color:#10b981;font-weight:700;margin:4px 0 2px 0;'>"
-                                        "📋 <b>Matching pharmacy tablets (click to select):</b></div>",
-                                        unsafe_allow_html=True
-                                    )
-                                    sug_cols = st.columns(min(len(matched), 3))
-                                    for m_i, match_val in enumerate(matched[:6]):
-                                        with sug_cols[m_i % min(len(matched), 3)]:
-                                            if st.button(f"💊 {match_val}", key=f"pv_sug_btn_{idx}_{m_i}", use_container_width=True):
-                                                st.session_state[med_search_key] = match_val
-                                                st.rerun()
+                            if selected_tablet == "➕ Other (Specify Custom Name)":
+                                medication = st.text_input(
+                                    f"Enter Custom Tablet Name #{idx+1}",
+                                    placeholder="e.g. Specialized Drug 10mg",
+                                    key=f"pv_rx_custom_{idx}"
+                                ).strip()
+                            elif selected_tablet:
+                                medication = selected_tablet
+                            else:
+                                medication = ""
 
                             dosage = st.text_input(f"Dosage #{idx+1}", placeholder="e.g. 1 capsule", key=f"pv_dosage_{idx}")
                         with rx_col2:

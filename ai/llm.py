@@ -32,18 +32,24 @@ def get_llm():
         return OfflineMockLLM()
 
     try:
+        # Fast 8B model with max_retries=0 & 3s timeout so it NEVER hangs on rate-limits
         return ChatGroq(
-            model="openai/gpt-oss-120b",   # Using user-specified model
-            temperature=0.3,
-            api_key=_api_key
+            model="llama-3.1-8b-instant",
+            temperature=0.2,
+            api_key=_api_key,
+            max_tokens=400,
+            max_retries=0,
+            request_timeout=3.0,
         )
     except Exception:
         try:
-            # Fallback to llama if model not available
             return ChatGroq(
                 model="llama-3.3-70b-versatile",
-                temperature=0.3,
-                api_key=_api_key
+                temperature=0.2,
+                api_key=_api_key,
+                max_tokens=400,
+                max_retries=0,
+                request_timeout=3.0,
             )
         except Exception:
             return OfflineMockLLM()

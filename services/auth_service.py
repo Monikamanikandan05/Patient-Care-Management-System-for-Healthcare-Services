@@ -8,7 +8,7 @@ def login_user(db: Session, email: str, password: str):
         return user
     return None
 
-def register_user(db: Session, name: str, email: str, password: str, role: str, gender: str, phone: str):
+def register_user(db: Session, name: str, email: str, password: str, role: str, gender: str, phone: str, dob=None):
     existing = db.query(User).filter(User.email == email.strip().lower()).first()
     if existing:
         raise ValueError("An account with this email address already exists.")
@@ -20,7 +20,8 @@ def register_user(db: Session, name: str, email: str, password: str, role: str, 
         password_hash=hashed,
         role=role,
         gender=gender,
-        phone=phone.strip()
+        phone=phone.strip(),
+        dob=dob
     )
     db.add(new_user)
     db.commit()

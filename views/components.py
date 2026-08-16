@@ -69,87 +69,66 @@ def load_login_bg_css():
 
 def load_dashboard_bg_css(role: str = "Patient"):
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        img_name = "dashboard_bg.jpg"
-        if role == "Doctor":
-            img_name = "doctor_bg.jpg"
-        elif role == "Patient":
-            img_name = "patient_bg.jpg"
-        elif role == "Admin":
-            img_name = "admin_bg.jpg"
-            
-        img_path = os.path.join(base_dir, "assets", img_name)
-        if os.path.exists(img_path):
-            import base64
-            with open(img_path, "rb") as f:
-                img_data = base64.b64encode(f.read()).decode("utf-8")
-            bg_css = f"""
-            <style>
-            html, body, [data-testid="stAppViewContainer"], .stApp {{
-                background-image: linear-gradient(rgba(11, 13, 16, 0.70), rgba(11, 13, 16, 0.85)), url("data:image/jpeg;base64,{img_data}") !important;
-                background-size: cover !important;
-                background-position: center center !important;
-                background-repeat: no-repeat !important;
-                background-attachment: fixed !important;
-            }}
+        bg_css = """
+        <style>
+        html, body, [data-testid="stAppViewContainer"], .stApp {
+            background: #020617 !important; /* Very dark blue theme */
+            background-attachment: fixed !important;
+        }
 
-            [data-testid="stSidebar"] {{
-                background-image: linear-gradient(rgba(11, 13, 16, 0.65), rgba(11, 13, 16, 0.82)), url("data:image/jpeg;base64,{img_data}") !important;
-                background-size: cover !important;
-                background-position: left center !important;
-                background-repeat: no-repeat !important;
-                background-attachment: fixed !important;
-                border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-                box-shadow: 4px 0 25px rgba(0, 0, 0, 0.4) !important;
-            }}
+        [data-testid="stSidebar"] {
+            background: #0f172a !important; /* Lighter dark blue for sidebar */
+            border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.4) !important;
+        }
 
-            [data-testid="stSidebar"] * {{
-                color: #f1f5f9 !important;
-            }}
+        [data-testid="stSidebar"] * {
+            color: #f1f5f9 !important;
+        }
 
-            [data-testid="stSidebar"] .sidebar-section-title {{
-                color: #94a3b8 !important;
-            }}
+        [data-testid="stSidebar"] .sidebar-section-title {
+            color: #94a3b8 !important;
+        }
 
-            [data-testid="stSidebar"] .sidebar-divider {{
-                background-color: rgba(255, 255, 255, 0.12) !important;
-            }}
+        [data-testid="stSidebar"] .sidebar-divider {
+            background-color: rgba(255, 255, 255, 0.12) !important;
+        }
 
-            [data-testid="stSidebar"] div[data-testid="stTextInput"] input {{
-                background-color: rgba(22, 25, 30, 0.8) !important;
-                border: 1px solid rgba(255, 255, 255, 0.15) !important;
-                color: #ffffff !important;
-            }}
+        [data-testid="stSidebar"] div[data-testid="stTextInput"] input {
+            background-color: rgba(22, 25, 30, 0.8) !important;
+            border: 1px solid rgba(255, 255, 255, 0.15) !important;
+            color: #ffffff !important;
+        }
 
-            [data-testid="stSidebar"] button[kind="primary"] {{
-                background: linear-gradient(135deg, rgba(37, 99, 235, 0.35) 0%, rgba(29, 78, 216, 0.45) 100%) !important;
-                color: #60a5fa !important;
-                border: none !important;
-                border-left: 4px solid #3b82f6 !important;
-                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
-                font-weight: 700 !important;
-            }}
+        [data-testid="stSidebar"] button[kind="primary"] {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.35) 0%, rgba(29, 78, 216, 0.45) 100%) !important;
+            color: #60a5fa !important;
+            border: none !important;
+            border-left: 4px solid #3b82f6 !important;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25) !important;
+            font-weight: 700 !important;
+        }
 
-            [data-testid="stSidebar"] button[kind="secondary"] {{
-                background-color: rgba(255, 255, 255, 0.03) !important;
-                color: #cbd5e1 !important;
-                border: 1px solid rgba(255, 255, 255, 0.05) !important;
-            }}
+        [data-testid="stSidebar"] button[kind="secondary"] {
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            color: #cbd5e1 !important;
+            border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
 
-            [data-testid="stSidebar"] button[kind="secondary"]:hover {{
-                background-color: rgba(59, 130, 246, 0.18) !important;
-                color: #60a5fa !important;
-                border-color: rgba(59, 130, 246, 0.3) !important;
-            }}
+        [data-testid="stSidebar"] button[kind="secondary"]:hover {
+            background-color: rgba(59, 130, 246, 0.18) !important;
+            color: #60a5fa !important;
+            border-color: rgba(59, 130, 246, 0.3) !important;
+        }
 
-            [data-testid="stSidebarCollapseButton"] *,
-            [data-testid="collapsedControl"] *,
-            [data-testid="stSidebar"] button[data-testid="baseButton-header"] * {{
-                font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
-            }}
-            </style>
-            """
-            st.markdown(bg_css, unsafe_allow_html=True)
+        [data-testid="stSidebarCollapseButton"] *,
+        [data-testid="collapsedControl"] *,
+        [data-testid="stSidebar"] button[data-testid="baseButton-header"] * {
+            font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', 'Material Icons' !important;
+        }
+        </style>
+        """
+        st.markdown(bg_css, unsafe_allow_html=True)
     except Exception:
         pass
 

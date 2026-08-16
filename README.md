@@ -1,4 +1,4 @@
-# 🏥 IPCMS — Integrated Patient Care Management System
+# 🏥 IPCMS — Patient Care Management System For Healthcare Services
 
 A full-stack cardiac-care web application built with **Streamlit**, **SQLAlchemy (MySQL)**, and an **AI chatbot** powered by Groq + LangChain + ChromaDB.
 

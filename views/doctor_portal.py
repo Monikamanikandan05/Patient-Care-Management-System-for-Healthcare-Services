@@ -4,7 +4,7 @@ from services.analytics_service import get_doctor_stats
 from services.appointment_service import get_appointments_for_user
 from services.health_service import add_health_record
 from services.doctor_service import add_doctor_profile
-from models.models import User, Appointment, Doctor, Specialty
+from models.models import User, Appointment, Doctor, Specialty, HealthRecord
 from views.components import html, format_doctor_name
 
 # ── Specialty → vitals form renderer ──────────────────────────────────────────
@@ -253,12 +253,19 @@ def render_doctor_portal():
 
         st.markdown("---")
 
+        # ── Interactive Appointment Calendar ─────────────────────────────
+        from views.calendar_component import render_appointment_calendar
+        render_appointment_calendar(db, "Doctor", user["id"])
+
+        st.markdown("---")
+
         # ── Practitioner Control Desk ──────────────────────────────────────────
         st.subheader("👨‍⚕️ Practitioner Control Desk")
 
-        tab1, tab2, tab3 = st.tabs([
+        tab1, tab2, tab3, tab4 = st.tabs([
             "📅 My Appointments",
             "💊 Prescribe & Clinical Notes",
+            "📋 My Prescriptions",
             "👨‍⚕️ My Profile"
         ])
 
@@ -384,16 +391,7 @@ def render_doctor_portal():
                     with st.expander(f"💊 Tablet #{idx + 1} Details", expanded=True):
                         rx_col1, rx_col2 = st.columns(2)
                         with rx_col1:
-                            filter_key = f"med_filter_{idx}"
-                            med_filter = st.session_state.get(filter_key, "")
-
-                            med_typed = st.text_input(
-                                f"💊 Tablet / Medication Name #{idx+1}",
-                                placeholder="Type tablet name… e.g. Paracetamol, Amoxicillin, Amlodipine",
-                                key=filter_key
-                            )
-
-                            # Build master list of medicines
+                            # Master list of all medicines & pharmacy inventory
                             ALL_MEDICINES_LIST = pharm_med_names + [
                                 "Paracetamol 500mg", "Paracetamol 650mg", "Paracetamol 1000mg",
                                 "Aspirin 75mg", "Aspirin 150mg", "Aspirin 325mg",
@@ -432,7 +430,6 @@ def render_doctor_portal():
                                 "Vitamin D3 60000 IU", "Calcium + Vitamin D3 500mg",
                                 "Vitamin C 500mg", "Zinc 20mg"
                             ]
-                            # Remove duplicates while preserving order
                             seen = set()
                             unique_meds = []
                             for m in ALL_MEDICINES_LIST:
@@ -440,30 +437,26 @@ def render_doctor_portal():
                                     seen.add(m.lower())
                                     unique_meds.append(m)
 
-                            # ── Matching list while typing ──────────────────────────
-                            query = med_typed.strip().lower()
-                            med_name = med_typed.strip()
+                            options_list = unique_meds + ["➕ Other (Specify Custom Name)"]
 
-                            if query:
-                                matches = [m for m in unique_meds if query in m.lower()]
-                                if matches:
-                                    st.markdown(
-                                        f"<div style='font-size:0.8rem;color:#3b82f6;font-weight:700;margin:4px 0 2px 0;'>"
-                                        f"📋 {len(matches)} matching tablet(s) — click to select:</div>",
-                                        unsafe_allow_html=True
-                                    )
-                                    sug_cols = st.columns(min(len(matches), 3))
-                                    for m_i, match_val in enumerate(matches[:6]):
-                                        with sug_cols[m_i % min(len(matches), 3)]:
-                                            if st.button(f"💊 {match_val}", key=f"doc_sug_btn_{idx}_{m_i}", use_container_width=True):
-                                                st.session_state[filter_key] = match_val
-                                                st.rerun()
-                                else:
-                                    st.markdown(
-                                        "<div style='font-size:0.78rem;color:#9ca3af;margin-top:2px;'>"
-                                        "ℹ️ Custom tablet name entered</div>",
-                                        unsafe_allow_html=True
-                                    )
+                            selected_tablet = st.selectbox(
+                                f"💊 Tablet / Medication Name #{idx+1}",
+                                options=options_list,
+                                index=None,
+                                placeholder="Type to search tablets… e.g. Amoxicillin, Paracetamol",
+                                key=f"doc_rx_select_{idx}"
+                            )
+
+                            if selected_tablet == "➕ Other (Specify Custom Name)":
+                                med_name = st.text_input(
+                                    f"Enter Custom Tablet Name #{idx+1}",
+                                    placeholder="e.g. Specialized Drug 10mg",
+                                    key=f"doc_rx_custom_{idx}"
+                                ).strip()
+                            elif selected_tablet:
+                                med_name = selected_tablet
+                            else:
+                                med_name = ""
 
                             dosage = st.text_input(f"Dosage #{idx+1}", placeholder="e.g. 1 Tablet / 2 Capsules", key=f"dosage_{idx}")
                         with rx_col2:
@@ -515,8 +508,225 @@ def render_doctor_portal():
             else:
                 st.info("No patient profiles registered.")
 
-        # ── Tab 3: My Profile ──────────────────────────────────────────────────
+        # ── Tab 3: My Prescriptions ────────────────────────────────────────────
         with tab3:
+            st.write("### 📋 My Issued Prescriptions")
+            st.caption("View, edit or delete prescriptions you have previously issued to patients.")
+
+            # Load all HealthRecords this doctor created (doctor_id FK via Doctor table)
+            doc_profile_rx = db.query(Doctor).filter(Doctor.user_id == user["id"]).first()
+
+            from sqlalchemy import or_
+            if doc_profile_rx:
+                # Match by doctor_id (Doctor table PK) OR null doctor_id records linked to this user's patients
+                my_records = (
+                    db.query(HealthRecord)
+                    .filter(HealthRecord.doctor_id == doc_profile_rx.id)
+                    .filter(HealthRecord.notes.isnot(None))
+                    .filter(HealthRecord.notes.like("%MEDICATION:%"))
+                    .order_by(HealthRecord.recorded_at.desc())
+                    .all()
+                )
+            else:
+                my_records = []
+
+            # Fallback: also show prescription records with NULL doctor_id
+            # (saved before a Doctor profile existed) — query all MEDICATION records
+            null_doc_records = (
+                db.query(HealthRecord)
+                .filter(HealthRecord.doctor_id.is_(None))
+                .filter(HealthRecord.notes.isnot(None))
+                .filter(HealthRecord.notes.like("%MEDICATION:%"))
+                .order_by(HealthRecord.recorded_at.desc())
+                .all()
+            )
+            # Merge, deduplicate by id
+            existing_ids = {r.id for r in my_records}
+            for r in null_doc_records:
+                if r.id not in existing_ids:
+                    my_records.append(r)
+            # Re-sort combined list newest first
+            my_records.sort(key=lambda r: r.recorded_at or __import__('datetime').datetime.min, reverse=True)
+
+            if not my_records:
+                html("""
+                <div class="medical-card" style="text-align:center; padding:40px;
+                     border: 2px dashed rgba(255,255,255,0.1);">
+                    <div style="font-size:3rem;">💊</div>
+                    <div style="color:#9ca3af; margin-top:12px; font-size:0.95rem; font-weight:600;">No prescriptions issued yet.</div>
+                    <div style="color:#64748b; font-size:0.82rem; margin-top:6px;">Issue prescriptions via the &ldquo;Prescribe &amp; Clinical Notes&rdquo; tab.</div>
+                </div>""")
+            else:
+                # ── Search / filter bar ────────────────────────────────────────
+                rx_search = st.text_input(
+                    "Search prescriptions (patient name or medication)",
+                    placeholder="e.g. Amoxicillin, John Doe…",
+                    key="rx_hist_search"
+                ).strip().lower()
+
+                # Build a lookup of all patients for display
+                all_patients = {p.id: p for p in db.query(User).filter(User.role == 'Patient').all()}
+
+                # ── Helper: parse pipe-separated notes ──────────────────────────
+                def _parse_rx_notes(notes_str):
+                    parsed = {"medication": "", "dosage": "", "frequency": "",
+                              "timing": "", "duration": "", "instructions": ""}
+                    for part in (notes_str or "").split(" | "):
+                        part = part.strip()
+                        if ":" in part:
+                            k, v = part.split(":", 1)
+                            key = k.strip().lower()
+                            val = v.strip()
+                            if key == "medication":    parsed["medication"]    = val
+                            elif key == "dosage":     parsed["dosage"]       = val
+                            elif key == "frequency":  parsed["frequency"]    = val
+                            elif key == "timing":     parsed["timing"]       = val
+                            elif key == "duration":   parsed["duration"]     = val
+                            elif key == "instructions": parsed["instructions"] = val
+                    return parsed
+
+                # ── Filter records ───────────────────────────────────────────
+                filtered_records = []
+                for rec in my_records:
+                    patient = all_patients.get(rec.patient_id)
+                    pname = (patient.full_name if patient else "Unknown").lower()
+                    parsed = _parse_rx_notes(rec.notes)
+                    if rx_search:
+                        if rx_search not in pname and rx_search not in parsed["medication"].lower():
+                            continue
+                    filtered_records.append((rec, patient, parsed))
+
+                st.markdown(f"**{len(filtered_records)} prescription(s) found**")
+                st.markdown("---")
+
+                # ── Edit / Delete state ─────────────────────────────────────────
+                if "rx_edit_id" not in st.session_state:
+                    st.session_state.rx_edit_id = None
+
+                freq_opts_rx = [
+                    "Once daily", "Twice daily", "Three times daily",
+                    "Four times daily", "Every 6 hours", "Every 8 hours",
+                    "Once weekly", "As needed (PRN)"
+                ]
+                timing_opts_rx = [
+                    "After food", "Before food", "At bedtime",
+                    "In the morning", "With food", "Empty stomach"
+                ]
+
+                for rec, patient, parsed in filtered_records:
+                    pname = patient.full_name if patient else "Unknown Patient"
+                    rec_date = rec.recorded_at.strftime("%d %b %Y, %I:%M %p") if rec.recorded_at else "N/A"
+                    is_editing = (st.session_state.rx_edit_id == rec.id)
+                    is_confirming_del = st.session_state.get(f"rx_confirm_del_{rec.id}", False)
+
+                    # ── Card header (always visible) ───────────────────────────
+                    html(f"""
+                    <div style="background:rgba(30,58,138,0.25); border:1px solid rgba(59,130,246,0.3);
+                                border-radius:14px; padding:16px 20px; margin-bottom:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <span style="font-size:1.05rem; font-weight:800; color:#ffffff;">
+                                    💊 {parsed['medication'] or 'Prescription'}
+                                </span>
+                                <span style="margin-left:10px; font-size:0.8rem; color:#94a3b8;">
+                                    &nbsp;👤 {pname} &nbsp;|&nbsp; 🗓 {rec_date}
+                                </span>
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px;">
+                            <div style="background:rgba(59,130,246,0.12); border-radius:8px; padding:8px 12px;">
+                                <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; margin-bottom:3px;">Dosage</div>
+                                <div style="font-weight:700; color:#e2e8f0;">{parsed['dosage'] or '—'}</div>
+                            </div>
+                            <div style="background:rgba(59,130,246,0.12); border-radius:8px; padding:8px 12px;">
+                                <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; margin-bottom:3px;">Frequency</div>
+                                <div style="font-weight:700; color:#e2e8f0;">{parsed['frequency'] or '—'}</div>
+                            </div>
+                            <div style="background:rgba(59,130,246,0.12); border-radius:8px; padding:8px 12px;">
+                                <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; margin-bottom:3px;">Timing</div>
+                                <div style="font-weight:700; color:#e2e8f0;">{parsed['timing'] or '—'}</div>
+                            </div>
+                            <div style="background:rgba(59,130,246,0.12); border-radius:8px; padding:8px 12px;">
+                                <div style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase; margin-bottom:3px;">Duration</div>
+                                <div style="font-weight:700; color:#e2e8f0;">{parsed['duration'] or '—'}</div>
+                            </div>
+                        </div>
+                        {f'<div style="margin-top:8px; font-size:0.82rem; color:#94a3b8;"><b>Diagnosis:</b> {rec.diagnosis}</div>' if rec.diagnosis else ''}
+                        {f'<div style="margin-top:4px; font-size:0.82rem; color:#94a3b8;"><b>Instructions:</b> {parsed["instructions"]}</div>' if parsed["instructions"] else ''}
+                    </div>
+                    """)
+
+                    # ── Action buttons (always rendered flat, not inside expander) ─
+                    if not is_editing and not is_confirming_del:
+                        act_col1, act_col2, _ = st.columns([1.2, 1.2, 4])
+                        with act_col1:
+                            if st.button(f"✏️ Edit", key=f"rx_edit_btn_{rec.id}"):
+                                st.session_state.rx_edit_id = rec.id
+                                st.rerun()
+                        with act_col2:
+                            if st.button(f"🗑️ Delete", key=f"rx_del_btn_{rec.id}"):
+                                st.session_state[f"rx_confirm_del_{rec.id}"] = True
+                                st.rerun()
+
+                    # ── Delete confirmation ────────────────────────────────────
+                    if is_confirming_del:
+                        st.warning(f"⚠️ Delete prescription for **{pname}** ({parsed['medication'] or 'this record'})? This cannot be undone.")
+                        yes_col, no_col, _ = st.columns([1, 1, 4])
+                        with yes_col:
+                            if st.button("✅ Yes, Delete", key=f"rx_del_yes_{rec.id}", type="primary"):
+                                db.query(HealthRecord).filter(HealthRecord.id == rec.id).delete()
+                                db.commit()
+                                st.session_state.pop(f"rx_confirm_del_{rec.id}", None)
+                                st.success("Prescription deleted successfully.")
+                                st.rerun()
+                        with no_col:
+                            if st.button("❌ Cancel", key=f"rx_del_no_{rec.id}"):
+                                st.session_state.pop(f"rx_confirm_del_{rec.id}", None)
+                                st.rerun()
+
+                    # ── Inline edit form ───────────────────────────────────────
+                    if is_editing:
+                        with st.container():
+                            st.markdown("##### ✏️ Edit Prescription Details")
+                            e_med = st.text_input("Medication Name", value=parsed["medication"], key=f"e_med_{rec.id}")
+                            e_col1, e_col2 = st.columns(2)
+                            with e_col1:
+                                e_dosage   = st.text_input("Dosage", value=parsed["dosage"], key=f"e_dos_{rec.id}")
+                                e_duration = st.text_input("Duration", value=parsed["duration"], key=f"e_dur_{rec.id}")
+                            with e_col2:
+                                freq_idx = freq_opts_rx.index(parsed["frequency"]) if parsed["frequency"] in freq_opts_rx else 0
+                                e_freq = st.selectbox("Frequency", freq_opts_rx, index=freq_idx, key=f"e_frq_{rec.id}")
+                                tim_idx = timing_opts_rx.index(parsed["timing"]) if parsed["timing"] in timing_opts_rx else 0
+                                e_timing = st.selectbox("Timing", timing_opts_rx, index=tim_idx, key=f"e_tim_{rec.id}")
+                            e_diag = st.text_input("Diagnosis", value=rec.diagnosis or "", key=f"e_diag_{rec.id}")
+                            e_inst = st.text_area("Instructions", value=parsed["instructions"], key=f"e_inst_{rec.id}")
+
+                            sv_col, cn_col, _ = st.columns([1.2, 1.2, 4])
+                            with sv_col:
+                                if st.button("💾 Save Changes", key=f"rx_save_{rec.id}", type="primary"):
+                                    rx_parts = [f"MEDICATION: {e_med.strip()}"]
+                                    if e_dosage.strip():   rx_parts.append(f"DOSAGE: {e_dosage.strip()}")
+                                    if e_freq:             rx_parts.append(f"FREQUENCY: {e_freq}")
+                                    if e_timing:           rx_parts.append(f"TIMING: {e_timing}")
+                                    if e_duration.strip(): rx_parts.append(f"DURATION: {e_duration.strip()}")
+                                    if e_inst.strip():     rx_parts.append(f"INSTRUCTIONS: {e_inst.strip()}")
+                                    db.query(HealthRecord).filter(HealthRecord.id == rec.id).update({
+                                        "notes":     " | ".join(rx_parts),
+                                        "diagnosis": e_diag.strip() or rec.diagnosis
+                                    })
+                                    db.commit()
+                                    st.session_state.rx_edit_id = None
+                                    st.success("✅ Prescription updated successfully!")
+                                    st.rerun()
+                            with cn_col:
+                                if st.button("Cancel", key=f"rx_cancel_{rec.id}"):
+                                    st.session_state.rx_edit_id = None
+                                    st.rerun()
+
+                    st.markdown("---")
+
+        # ── Tab 4: My Profile ──────────────────────────────────────────────────
+        with tab4:
             st.write("### 👨‍⚕️ My Professional Profile")
             doctor_profile = db.query(Doctor).filter(Doctor.user_id == user["id"]).first()
             specialties = db.query(Specialty).all()

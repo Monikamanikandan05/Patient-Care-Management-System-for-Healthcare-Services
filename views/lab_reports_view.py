@@ -184,6 +184,14 @@ def render_lab_reports_view():
                     </p>
                 </div>
                 """)
+                if st.button("🗑️ Delete Report", key=f"del_lab_{rec.id}", use_container_width=False):
+                    try:
+                        db.query(HealthRecord).filter(HealthRecord.id == rec.id).delete()
+                        db.commit()
+                        st.success("Report deleted successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Failed to delete report: {e}")
 
     finally:
         db.close()

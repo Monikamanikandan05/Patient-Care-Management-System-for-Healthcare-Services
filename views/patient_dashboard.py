@@ -141,7 +141,7 @@ import json
 from fpdf import FPDF
 
 APP_NAME = "IPCMS"
-APP_FULL_NAME = "Integrated Patient Care Management System"
+APP_FULL_NAME = "Patient Care Management System For Healthcare Services"
 CLINIC_NAME = "Smart Care Clinic"
 CLINIC_ADDRESS = "4945 Williams Lane, Wichita, KS 67226"
 CLINIC_PHONE = "222-555-7777"
@@ -950,6 +950,12 @@ def render_patient_dashboard():
         with col3:
             st.metric("🩺 Health Records", len(records))
             
+        st.markdown("---")
+
+        # ── Interactive Appointment Calendar ─────────────────────────────
+        from views.calendar_component import render_appointment_calendar
+        render_appointment_calendar(db, "Patient", user["id"])
+
         st.markdown("---")
         
         # ── AI Health Summary ───────────────────────────────────────────────
